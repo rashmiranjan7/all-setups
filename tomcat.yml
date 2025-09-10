@@ -1,58 +1,30 @@
 - hosts: all
-  become: yes
   tasks:
-
-    # 1️⃣ Install Java (idempotent)
-    - name: Install Java
-      yum:
-        name: java-1.8.0-openjdk
-        state: present
-
-    # 2️⃣ Download Tomcat (idempotent)
-    - name: Download Tomcat from Apache
+    - name: download tomcat from dlcdn
       get_url:
         url: "https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.109/bin/apache-tomcat-9.0.109.tar.gz"
-        dest: "/root/apache-tomcat-9.0.109.tar.gz"
-        mode: '0644'
+        dest: "/root/"
 
-    # 3️⃣ Extract Tomcat if not already extracted
-    - name: Extract Tomcat
-      unarchive:
-        src: /root/apache-tomcat-9.0.109.tar.gz
-        dest: /root/
-        remote_src: yes
-        creates: /root/apache-tomcat-9.0.109
+    - name: untar the apache file
+      command: tar -zxvf apache-tomcat-9.0.109.tar.gz
 
-    # 4️⃣ Rename folder safely if not already renamed
-    - name: Rename Tomcat folder
-      command: mv /root/apache-tomcat-9.0.109 /root/tomcat
-      args:
-        creates: /root/tomcat
 
-    # 5️⃣ Deploy tomcat-users.xml
-    - name: Deploy tomcat-users.xml
+    - name: rename the tomcat
+      command: mv apache-tomcat-9.0.109 tomcat
+      tags: abc
+
+    - name: install java
+      command: yum install java-1.8.0-openjdk -y
+
+    - name: setting the roles in tomcat-user.xml file
       template:
         src: tomcat-users.xml
         dest: /root/tomcat/conf/tomcat-users.xml
 
-    # 6️⃣ Deploy context.xml
-    - name: Deploy context.xml
+    - name: delete two lines in context.xml
       template:
         src: context.xml
         dest: /root/tomcat/webapps/manager/META-INF/context.xml
 
-    # 7️⃣ Ensure firewall allows 8080
-    - name: Open port 8080 in firewall
-      firewalld:
-        port: 8080/tcp
-        permanent: yes
-        state: enabled
-        immediate: yes
-
-    # 8️⃣ Start Tomcat in background
-    - name: Start Tomcat
+    - name: start the tomcat
       shell: nohup /root/tomcat/bin/startup.sh
-      args:
-        chdir: /root/tomcat/bin/
-      async: 0
-      poll: 0

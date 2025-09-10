@@ -2,40 +2,54 @@
   become: yes
   tasks:
 
-    - name: Install Java (idempotent)
+    # 1️⃣ Install Java (idempotent)
+    - name: Install Java
       yum:
         name: java-1.8.0-openjdk
         state: present
 
-    - name: Download Tomcat from dlcdn
+    # 2️⃣ Download Tomcat (idempotent)
+    - name: Download Tomcat from Apache
       get_url:
         url: "https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.109/bin/apache-tomcat-9.0.109.tar.gz"
         dest: "/root/apache-tomcat-9.0.109.tar.gz"
         mode: '0644'
-      register: download_tomcat
 
-    - name: Extract Tomcat if not already present
+    # 3️⃣ Extract Tomcat if not already extracted
+    - name: Extract Tomcat
       unarchive:
         src: /root/apache-tomcat-9.0.109.tar.gz
         dest: /root/
         remote_src: yes
         creates: /root/apache-tomcat-9.0.109
 
-    - name: Rename Tomcat folder if not already renamed
+    # 4️⃣ Rename folder safely if not already renamed
+    - name: Rename Tomcat folder
       command: mv /root/apache-tomcat-9.0.109 /root/tomcat
       args:
         creates: /root/tomcat
 
+    # 5️⃣ Deploy tomcat-users.xml
     - name: Deploy tomcat-users.xml
       template:
         src: tomcat-users.xml
         dest: /root/tomcat/conf/tomcat-users.xml
 
+    # 6️⃣ Deploy context.xml
     - name: Deploy context.xml
       template:
         src: context.xml
         dest: /root/tomcat/webapps/manager/META-INF/context.xml
 
+    # 7️⃣ Ensure firewall allows 8080
+    - name: Open port 8080 in firewall
+      firewalld:
+        port: 8080/tcp
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    # 8️⃣ Start Tomcat in background
     - name: Start Tomcat
       shell: nohup /root/tomcat/bin/startup.sh
       args:

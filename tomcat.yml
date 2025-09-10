@@ -1,30 +1,44 @@
 - hosts: all
+  become: yes
   tasks:
-    - name: download tomcat from dlcdn
+
+    - name: Install Java (idempotent)
+      yum:
+        name: java-1.8.0-openjdk
+        state: present
+
+    - name: Download Tomcat from dlcdn
       get_url:
         url: "https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.109/bin/apache-tomcat-9.0.109.tar.gz"
-        dest: "/root/"
+        dest: "/root/apache-tomcat-9.0.109.tar.gz"
+        mode: '0644'
+      register: download_tomcat
 
-    - name: untar the apache file
-      command: tar -zxvf apache-tomcat-9.0.109.tar.gz
+    - name: Extract Tomcat if not already present
+      unarchive:
+        src: /root/apache-tomcat-9.0.109.tar.gz
+        dest: /root/
+        remote_src: yes
+        creates: /root/apache-tomcat-9.0.109
 
+    - name: Rename Tomcat folder if not already renamed
+      command: mv /root/apache-tomcat-9.0.109 /root/tomcat
+      args:
+        creates: /root/tomcat
 
-    - name: rename the tomcat
-      command: mv apache-tomcat-9.0.109 tomcat
-      tags: abc
-
-    - name: install java
-      command: yum install java-1.8.0-openjdk -y
-
-    - name: setting the roles in tomcat-user.xml file
+    - name: Deploy tomcat-users.xml
       template:
         src: tomcat-users.xml
         dest: /root/tomcat/conf/tomcat-users.xml
 
-    - name: delete two lines in context.xml
+    - name: Deploy context.xml
       template:
         src: context.xml
         dest: /root/tomcat/webapps/manager/META-INF/context.xml
 
-    - name: start the tomcat
+    - name: Start Tomcat
       shell: nohup /root/tomcat/bin/startup.sh
+      args:
+        chdir: /root/tomcat/bin/
+      async: 0
+      poll: 0
